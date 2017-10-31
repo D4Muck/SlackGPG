@@ -19,16 +19,19 @@
 package at.d4m.slackpgp.crypto;
 
 import com.google.common.io.CharStreams;
+import org.bouncycastle.bcpg.SymmetricKeyAlgorithmTags;
+import org.bouncycastle.openpgp.*;
+import org.bouncycastle.openpgp.operator.bc.BcKeyFingerprintCalculator;
+import org.bouncycastle.openpgp.operator.bc.BcPGPDataEncryptorBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.util.ArrayList;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Random;
 
 /**
  * @author Christoph Muck
@@ -51,29 +54,71 @@ public class GPGEncrypter {
         }
     }
 
+//    private String doEncryptMessage(String message, List<String> emailsOfRecipients) throws InterruptedException, IOException {
+//        ArrayList<String> gpgArgs = new ArrayList<>(2 + (emailsOfRecipients.size() * 2));
+//        gpgArgs.add("gpg2");
+//        gpgArgs.add("-eas");
+//        for (String email : emailsOfRecipients) {
+//            gpgArgs.add("-r");
+//            gpgArgs.add(email);
+//        }
+//
+//        ProcessBuilder gpgProccessBuilder = new ProcessBuilder(gpgArgs.toArray(new String[0]));
+//        Process gpgProcess = gpgProccessBuilder.start();
+//
+//        OutputStream stdin = gpgProcess.getOutputStream();
+//
+//        try (PrintWriter printWriter = new PrintWriter(stdin)) {
+//            printWriter.write(message);
+//        }
+//
+//        gpgProcess.waitFor();
+//
+//        try (InputStreamReader gpgOutput = new InputStreamReader(gpgProcess.getInputStream(), "UTF-8")) {
+//            return CharStreams.toString(gpgOutput);
+//        }
+//    }
+
     private String doEncryptMessage(String message, List<String> emailsOfRecipients) throws InterruptedException, IOException {
-        ArrayList<String> gpgArgs = new ArrayList<>(2 + (emailsOfRecipients.size() * 2));
-        gpgArgs.add("gpg2");
-        gpgArgs.add("-eas");
-        for (String email : emailsOfRecipients) {
-            gpgArgs.add("-r");
-            gpgArgs.add(email);
+
+
+        Random random = new Random();
+
+        byte[] key = new byte[32];
+        random.nextBytes(key);
+
+        PGPEncryptedDataGenerator pgpEncryptedDataGenerator = new PGPEncryptedDataGenerator(new BcPGPDataEncryptorBuilder(SymmetricKeyAlgorithmTags.AES_256));
+
+
+//            pgpEncryptedDataGenerator.addMethod();
+
+
+//            PGPKeyEncryptionMethodGenerator
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+//            build.getOutputStream(byteArrayOutputStream);
+
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(byteArrayOutputStream));
+        writer.println("This is an encrypted message!");
+        return "";
+    }
+
+    private void getAllPublicKeys() throws IOException, PGPException {
+        InputStream pubringFile = Files.newInputStream(Paths.get("/path/to/pubkeys.gpg"));
+        InputStream file = PGPUtil.getDecoderStream(pubringFile);
+        PGPPublicKeyRingCollection publicKeyRings = new PGPPublicKeyRingCollection(file, new BcKeyFingerprintCalculator());
+
+
+        for (PGPPublicKeyRing keyRing : publicKeyRings) {
+            for (PGPPublicKey key : keyRing) {
+                key.getUserIDs().forEachRemaining(System.out::println);
+            }
         }
+    }
 
-        ProcessBuilder gpgProccessBuilder = new ProcessBuilder(gpgArgs.toArray(new String[0]));
-        Process gpgProcess = gpgProccessBuilder.start();
-
-        OutputStream stdin = gpgProcess.getOutputStream();
-
-        try (PrintWriter printWriter = new PrintWriter(stdin)) {
-            printWriter.write(message);
-        }
-
-        gpgProcess.waitFor();
-
-        try (InputStreamReader gpgOutput = new InputStreamReader(gpgProcess.getInputStream(), "UTF-8")) {
-            return CharStreams.toString(gpgOutput);
-        }
+    public static void main(String[] args) throws IOException, PGPException {
+        new GPGEncrypter().getAllPublicKeys();
     }
 
     public String decryptMessage(String encryptedMessage) {
